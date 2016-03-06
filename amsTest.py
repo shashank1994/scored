@@ -19,13 +19,12 @@ class scored(object):
 		self.cj = cookielib.CookieJar()
 		self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cj))
 		self.xpages = 10
-
+		self.url = url
 		if num == 0:
 			f = open(input, "r")
 			print "Name of the file: ", f.name
-			xpath_list = []
-			for line in f:
-				xpath_list.append(line)
+			
+			xpath_list = [line.strip() for line in f]
 			self.get_journal_list_by_xpath(url, xpath_list)
 		elif num == 1:
 			class_name = input
@@ -33,21 +32,45 @@ class scored(object):
 		else:
 			print "Please enter a legal input"
 
-	def get_journal_list_by_xpath(url, xpath_list):
+	def get_journal_list_by_xpath(self, url, xpath_list):
 
 		journalDriver = webdriver.PhantomJS()
 		journalDriver.get(url)
 
+		fileName = "issuelist.txt"
+		soups = []
 
+		print len(xpath_list)
 
 		for xpath in xpath_list:
-			print xpath.get_attribute('href')
-			soup = self.get_page_soup(xpath.get_attribute('href'))
-		
-			self.get_issues_list(soup, fname)
+			xpathElement = journalDriver.find_element_by_xpath(xpath)
+			print xpathElement.get_attribute('href')
+			soup = self.get_page_soup(xpathElement.get_attribute('href'))
+
+			print soup 
+			print "\n New line"
+			self.get_issues_list(soup, fileName)
 
 		self.driver.close()
 
+	def get_journal_list_by_classtag(self, url, class_name):
+		journalDriver = webdriver.PhantomJS()
+		journalDriver.get(url)
+
+		fileName = "issuelistClass.txt"
+
+		classTagArray = []
+
+		classTagArray = journalDriver.find_elements_by_class_name(class_name)
+
+		print len(classTagArray)
+		for classTag in classTagArray:
+			soup = self.get_page_soup(classTag.find_element_by_tag_name('a').get_attribute('href'))
+
+			print soup 
+			print "\n New line"
+			self.get_issues_list(soup, fileName)
+		self.driver.close()
 
 
 	def get_html(self, link):
@@ -88,15 +111,18 @@ class scored(object):
 		stopwords = ['facebook', 'twitter', 'youtube', 'linkedin', 'membership', 'subscribe', 'subscription', 'blog',\
 					 'submit', 'contact', 'listserve', 'login', 'disclaim', 'editor', 'section', 'librarian', 'alert',\
 					 '#', 'email', '?', 'copyright', 'license', 'charges', 'terms', 'mailto:', 'submission', 'author',\
-					 'media', 'news']
+					 'media', 'news', 'rss', 'mobile', 'help']
 		currLink = ''
 		lastURL = ''
 		penulURL = ''
 		
 		for link in soup.find_all('a'):
-			if not pubHouse:
-				pubHouse = 'http://'+link.get('href').split('http://')[1].split('/')[0]
-			
+			try:
+				if not pubHouse:
+					pubHouse = 'http://'+link.get('href').split('http://')[1].split('/')[0]
+			except:
+				pubHouse = self.url
+
 			doi = self.link_has_doi(link.get('href'))
 
 			try:
@@ -135,7 +161,6 @@ class scored(object):
 
 	def iterative_issues(self, soup, issuelist, f, pubHouse):
 		''' keeps diving down on issues pages until article page is reached'''
-		print 'in iterative_issues_search: ', issuelist
 		issues = []
 		allIssuesList = []
 		allIssuesList = issuelist 
@@ -387,8 +412,9 @@ def main():
 
 	ametsocURL = 'http://journals.ametsoc.org'
 	aguURL = 'http://agupubs.onlinelibrary.wiley.com/agu'
-	journals = scrapeAMSJournal(ametsocURL)
-	journals.info_from_ams() 
+	#journals = scored(ametsocURL, 0, 'xpathTest.txt')
+	journals = scored(ametsocURL, 1, 'journalListing')
+	#journals.info_from_ams() 
 	#journals = scrapeAMSJournal(aguURL)
 	#journals.info_from_agu() 
 
